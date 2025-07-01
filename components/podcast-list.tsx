@@ -1,14 +1,15 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
-import { Play, Calendar, Clock, Heart, Download, Share2, TrendingUp, Users, Eye } from "lucide-react"
+import { Play, Pause, Calendar, Clock, Heart, Download, Share2, TrendingUp, Users, Eye } from "lucide-react"
 import { usePapers } from "@/hooks/use-papers"
+import { useToast } from "@/hooks/use-toast"
 
 interface FilterState {
   category?: string
@@ -26,6 +27,10 @@ interface PodcastListProps {
 export function PodcastList({ category = "all", searchQuery = "", filters }: PodcastListProps) {
   const [sortBy, setSortBy] = useState<"created_at" | "views" | "likes">("created_at")
   const [likedPodcasts, setLikedPodcasts] = useState<Set<string>>(new Set())
+  const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState<Set<string>>(new Set())
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const { toast } = useToast()
 
   const { papers: rawPapers, loading, error } = usePapers({
     category: category === "all" ? undefined : category,
@@ -77,6 +82,145 @@ export function PodcastList({ category = "all", searchQuery = "", filters }: Pod
       return newSet
     })
   }
+
+  const handlePlayToggle = async (paper: any) => {
+    try {
+      // 如果當前正在播放這個播客，則暫停
+      if (currentlyPlaying === paper.id) {
+        if (audioRef.current) {
+          audioRef.current.pause()
+        }
+        setCurrentlyPlaying(null)
+        return
+      }
+
+      // 停止當前播放的音頻
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current = null
+      }
+
+      // 設置載入狀態
+      setIsLoading(prev => new Set([...prev, paper.id]))
+
+      // 創建新的音頻元素
+      const audio = new Audio(paper.audio_url || "/sample-podcast.mp3")
+      audioRef.current = audio
+
+      // 設置音頻事件
+      audio.oncanplay = () => {
+        setIsLoading(prev => {
+          const newSet = new Set(prev)
+          newSet.delete(paper.id)
+          return newSet
+        })
+      }
+
+      audio.onended = () => {
+        setCurrentlyPlaying(null)
+      }
+
+      audio.onerror = () => {
+        setIsLoading(prev => {
+          const newSet = new Set(prev)
+          newSet.delete(paper.id)
+          return newSet
+        })
+        toast({
+          title: "播放錯誤",
+          description: "無法播放音頻，請稍後再試",
+          variant: "destructive",
+        })
+      }
+
+      // 開始播放
+      await audio.play()
+      setCurrentlyPlaying(paper.id)
+      setIsLoading(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(paper.id)
+        return newSet
+      })
+    } catch (error) {
+      setIsLoading(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(paper.id)
+        return newSet
+      })
+      toast({
+        title: "播放錯誤",
+        description: "無法播放音頻，請稍後再試",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleShare = async (paper: any) => {
+    const url = `${window.location.origin}/podcast/${paper.id}`
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: paper.title,
+          text: `來聽聽這個關於「${paper.title}」的學術播客`,
+          url: url,
+        })
+      } else {
+        await navigator.clipboard.writeText(url)
+        toast({
+          title: "連結已複製",
+          description: "播客連結已複製到剪貼板",
+        })
+      }
+    } catch (error) {
+      try {
+        await navigator.clipboard.writeText(url)
+        toast({
+          title: "連結已複製",
+          description: "播客連結已複製到剪貼板",
+        })
+      } catch (clipboardError) {
+        toast({
+          title: "分享失敗",
+          description: "無法分享或複製連結",
+          variant: "destructive",
+        })
+      }
+    }
+  }
+
+  const handleDownload = async (paper: any) => {
+    try {
+      const link = document.createElement("a")
+      link.href = paper.audio_url || "/sample-podcast.mp3"
+      link.download = `${paper.title}.mp3`
+      link.style.display = "none"
+
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      toast({
+        title: "開始下載",
+        description: "音頻文件下載已開始",
+      })
+    } catch (error) {
+      toast({
+        title: "下載失敗",
+        description: "無法下載音頻文件，請稍後再試",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // 清理音頻資源
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current = null
+      }
+    }
+  }, [])
 
   if (loading) {
     return (
@@ -146,11 +290,22 @@ export function PodcastList({ category = "all", searchQuery = "", filters }: Pod
                     variant="outline"
                     size="icon"
                     className="h-16 w-16 rounded-full border-2 hover:border-primary hover:bg-primary hover:text-primary-foreground transition-all duration-200 group-hover:scale-110"
+                    onClick={() => handlePlayToggle(paper)}
+                    disabled={isLoading.has(paper.id)}
                   >
-                    <Play className="h-8 w-8 ml-1" />
+                    {isLoading.has(paper.id) ? (
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-current"></div>
+                    ) : currentlyPlaying === paper.id ? (
+                      <Pause className="h-8 w-8" />
+                    ) : (
+                      <Play className="h-8 w-8 ml-1" />
+                    )}
                   </Button>
                   {paper.trending && (
                     <Badge className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-1">熱門</Badge>
+                  )}
+                  {currentlyPlaying === paper.id && (
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full animate-pulse"></div>
                   )}
                 </div>
               </div>
@@ -168,6 +323,11 @@ export function PodcastList({ category = "all", searchQuery = "", filters }: Pod
                           <Badge variant="secondary" className="text-xs flex items-center">
                             <TrendingUp className="w-3 h-3 mr-1" />
                             熱門
+                          </Badge>
+                        )}
+                        {currentlyPlaying === paper.id && (
+                          <Badge variant="secondary" className="text-xs flex items-center bg-green-100 text-green-800">
+                            正在播放
                           </Badge>
                         )}
                       </div>
@@ -226,11 +386,21 @@ export function PodcastList({ category = "all", searchQuery = "", filters }: Pod
                       <Heart className={`h-4 w-4 ${likedPodcasts.has(paper.id) ? "fill-red-500 text-red-500" : ""}`} />
                       {paper.likes + (likedPodcasts.has(paper.id) ? 1 : 0)}
                     </Button>
-                    <Button variant="ghost" size="sm" className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex items-center gap-1"
+                      onClick={() => handleDownload(paper)}
+                    >
                       <Download className="h-4 w-4" />
                       下載
                     </Button>
-                    <Button variant="ghost" size="sm" className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex items-center gap-1"
+                      onClick={() => handleShare(paper)}
+                    >
                       <Share2 className="h-4 w-4" />
                       分享
                     </Button>

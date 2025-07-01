@@ -175,7 +175,7 @@ export default function PodcastDetail({ params }: PodcastDetailProps) {
                 {new Date(paper.created_at).toLocaleDateString("zh-TW")}
               </span>
               <span className="flex items-center">
-                <Clock className="mr-2 h-4 w-4" />
+                <Clock className="mr-2 h-4 w-4" /> 
                 {Math.round(paper.duration_seconds / 60)} 分鐘
               </span>
               <span className="flex items-center">
