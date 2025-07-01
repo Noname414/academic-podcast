@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PodcastPlayer } from "@/components/podcast-player"
@@ -27,6 +26,7 @@ import {
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { usePaper, usePapers } from "@/hooks/use-papers"
+import { CommentSection } from "@/components/comment-section"
 
 interface PodcastDetailProps {
   params: Promise<{
@@ -37,28 +37,6 @@ interface PodcastDetailProps {
 export default function PodcastDetail({ params }: PodcastDetailProps) {
   const resolvedParams = use(params)
   const [isLiked, setIsLiked] = useState(false)
-  const [comment, setComment] = useState("")
-  const [comments, setComments] = useState([
-    {
-      id: 1,
-      author: "李研究員",
-      avatar: "/placeholder-avatar.jpg",
-      content: "這篇論文的方法論很有創新性，特別是在處理低資源語言方面的技術突破。",
-      timestamp: "2小時前",
-      likes: 12,
-      replies: 3,
-    },
-    {
-      id: 2,
-      author: "王教授",
-      avatar: "/placeholder-avatar.jpg",
-      content: "播客的解釋很清楚，讓我對這個領域有了更深入的理解。希望能有更多類似的內容。",
-      timestamp: "5小時前",
-      likes: 8,
-      replies: 1,
-    },
-  ])
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
   const { toast } = useToast()
 
   // 使用真實的資料庫資料
@@ -67,11 +45,6 @@ export default function PodcastDetail({ params }: PodcastDetailProps) {
     category: paper?.category,
     limit: 3,
   })
-
-  useEffect(() => {
-    // 模擬檢查登入狀態
-    setIsLoggedIn(Math.random() > 0.5)
-  }, [])
 
   const toggleLike = () => {
     setIsLiked(!isLiked)
@@ -93,28 +66,6 @@ export default function PodcastDetail({ params }: PodcastDetailProps) {
     toast({
       title: "開始下載",
       description: "音頻文件下載已開始",
-    })
-  }
-
-  const submitComment = () => {
-    if (!comment.trim()) return
-
-    const newComment = {
-      id: comments.length + 1,
-      author: "我",
-      avatar: "/placeholder-avatar.jpg",
-      content: comment,
-      timestamp: "剛剛",
-      likes: 0,
-      replies: 0,
-    }
-
-    setComments([newComment, ...comments])
-    setComment("")
-
-    toast({
-      title: "評論已發布",
-      description: "您的評論已成功發布",
     })
   }
 
@@ -175,7 +126,7 @@ export default function PodcastDetail({ params }: PodcastDetailProps) {
                 {new Date(paper.created_at).toLocaleDateString("zh-TW")}
               </span>
               <span className="flex items-center">
-                <Clock className="mr-2 h-4 w-4" /> 
+                <Clock className="mr-2 h-4 w-4" />
                 {Math.round(paper.duration_seconds / 60)} 分鐘
               </span>
               <span className="flex items-center">
@@ -305,69 +256,7 @@ export default function PodcastDetail({ params }: PodcastDetailProps) {
             </TabsContent>
 
             <TabsContent value="comments" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <MessageSquare className="mr-2 h-5 w-5" />
-                    討論區 ({comments.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {isLoggedIn ? (
-                    <div className="space-y-4">
-                      <Textarea
-                        placeholder="分享您對這篇論文的看法..."
-                        value={comment}
-                        onChange={(e) => setComment(e.target.value)}
-                        className="min-h-[100px]"
-                      />
-                      <div className="flex justify-end">
-                        <Button onClick={submitComment} disabled={!comment.trim()}>
-                          發布評論
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 bg-muted/50 rounded-lg">
-                      <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                      <p className="text-muted-foreground mb-4">登入後參與討論</p>
-                      <Button onClick={() => setIsLoggedIn(true)}>登入 / 註冊</Button>
-                    </div>
-                  )}
-
-                  <Separator />
-
-                  <div className="space-y-6">
-                    {comments.map((comment) => (
-                      <div key={comment.id} className="flex gap-4">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={comment.avatar || "/placeholder.svg"} />
-                          <AvatarFallback>{comment.author[0]}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 space-y-2">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold">{comment.author}</span>
-                            <span className="text-sm text-muted-foreground">{comment.timestamp}</span>
-                          </div>
-                          <p className="text-muted-foreground leading-relaxed">{comment.content}</p>
-                          <div className="flex items-center gap-4">
-                            <Button variant="ghost" size="sm" className="h-8 px-2">
-                              <ThumbsUp className="h-4 w-4 mr-1" />
-                              {comment.likes}
-                            </Button>
-                            <Button variant="ghost" size="sm" className="h-8 px-2">
-                              回覆 ({comment.replies})
-                            </Button>
-                            <Button variant="ghost" size="sm" className="h-8 px-2">
-                              <Flag className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+              <CommentSection paperId={paper.id} />
             </TabsContent>
           </Tabs>
         </div>
@@ -434,7 +323,7 @@ export default function PodcastDetail({ params }: PodcastDetailProps) {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">評論數量</span>
-                <span className="font-semibold">{comments.length}</span>
+                <span className="font-semibold">{/* This will now be handled inside CommentSection */}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">播放時長</span>
