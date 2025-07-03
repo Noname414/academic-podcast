@@ -68,50 +68,57 @@ export function usePapers(options: UsePapersOptions = {}) {
   return { papers, loading, error, refetch: fetchPapers }
 }
 
+type PaperWithLikeStatus = Paper & { is_liked_by_user?: boolean }
+
 export function usePaper(id: string) {
-  const [paper, setPaper] = useState<Paper | null>(null)
+  const [paper, setPaper] = useState<PaperWithLikeStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    const fetchPaper = async () => {
-      try {
-        setLoading(true)
-        setError(null)
+  const fetchPaper = useCallback(async () => {
+    if (!id) return
+    try {
+      setLoading(true)
+      setError(null)
 
-        console.log("Fetching paper with id:", id)
+      console.log("Fetching paper with id:", id)
 
-        const response = await fetch(`/api/papers/${id}`)
+      // We need to know the user's like status, so we pass a flag
+      const response = await fetch(`/api/papers/${id}?include_like_status=true`)
 
-        if (!response.ok) {
-          // 依 Content-Type 分流解析
-          const isJson = response.headers.get("content-type")?.toLowerCase().includes("application/json")
-
-          const errorPayload = isJson
-            ? await response.json().catch(() => ({}))
-            : { error: await response.text().catch(() => "") }
-
-          const friendly =
-            errorPayload.message || errorPayload.error || `HTTP ${response.status} ${response.statusText}`
-
-          throw new Error(friendly)
-        }
-
-        const data = await response.json()
-        setPaper(data)
-      } catch (err) {
-        console.error("Error in usePaper:", err)
-        setError(err instanceof Error ? err.message : "An error occurred")
-        setPaper(null)
-      } finally {
-        setLoading(false)
+      if (!response.ok) {
+        // 依 Content-Type 分流解析
+        const isJson = response.headers.get("content-type")?.toLowerCase().includes("application/json")
+        const errorPayload = isJson ? await response.json().catch(() => ({})) : { error: await response.text().catch(() => "") }
+        const friendly = errorPayload.message || errorPayload.error || `HTTP ${response.status} ${response.statusText}`
+        throw new Error(friendly)
       }
-    }
 
-    if (id) {
-      fetchPaper()
+      const data = await response.json()
+      setPaper(data)
+    } catch (err) {
+      console.error("Error in usePaper:", err)
+      setError(err instanceof Error ? err.message : "An error occurred")
+      setPaper(null)
+    } finally {
+      setLoading(false)
     }
   }, [id])
 
-  return { paper, loading, error }
+  useEffect(() => {
+    fetchPaper()
+  }, [fetchPaper])
+
+  const setLikeStatus = (isLiked: boolean) => {
+    setPaper(prev => {
+      if (!prev) return null
+      return {
+        ...prev,
+        is_liked_by_user: isLiked,
+        likes: prev.likes + (isLiked ? 1 : -1)
+      }
+    })
+  }
+
+  return { paper, loading, error, setLikeStatus, refetch: fetchPaper }
 }

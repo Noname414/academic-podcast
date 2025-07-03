@@ -4,7 +4,9 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle, CheckCircle, Database, RefreshCw, Sprout } from "lucide-react"
+import { AlertCircle, CheckCircle, Database, RefreshCw, Sprout, Users, BookCopy } from "lucide-react"
+import { UserManagementTable } from "@/components/admin/user-table"
+import { PaperManagementTable } from "@/components/admin/paper-table"
 
 export default function AdminPage() {
   const [isInitializing, setIsInitializing] = useState(false)
@@ -130,6 +132,34 @@ export default function AdminPage() {
           <AlertDescription>{result.message}</AlertDescription>
         </Alert>
       )}
+
+      <div className="mt-8">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              用戶管理
+            </CardTitle>
+            <CardDescription>查看和管理所有用戶</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <UserManagementTable />
+          </CardContent>
+        </Card>
+
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BookCopy className="h-5 w-5" />
+              論文管理
+            </CardTitle>
+            <CardDescription>查看和管理所有論文</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PaperManagementTable />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

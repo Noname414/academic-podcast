@@ -145,6 +145,96 @@ async function initDatabase() {
       $$ LANGUAGE plpgsql;
     `)
 
+    // Create function to toggle paper like status
+    await query(`
+      CREATE OR REPLACE FUNCTION toggle_paper_like(p_paper_id UUID, p_user_id UUID)
+      RETURNS BOOLEAN AS $$
+      DECLARE
+        is_liked BOOLEAN;
+      BEGIN
+        -- Check if the user already liked the paper
+        SELECT EXISTS (
+          SELECT 1 FROM paper_likes WHERE paper_id = p_paper_id AND user_id = p_user_id
+        ) INTO is_liked;
+
+        IF is_liked THEN
+          -- Unlike the paper
+          DELETE FROM paper_likes WHERE paper_id = p_paper_id AND user_id = p_user_id;
+          UPDATE papers SET likes = likes - 1 WHERE id = p_paper_id AND likes > 0;
+          RETURN FALSE;
+        ELSE
+          -- Like the paper
+          INSERT INTO paper_likes (paper_id, user_id) VALUES (p_paper_id, p_user_id);
+          UPDATE papers SET likes = likes + 1 WHERE id = p_paper_id;
+          RETURN TRUE;
+        END IF;
+      END;
+      $$ LANGUAGE plpgsql;
+    `)
+
+    // Create notifications table
+    await query(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        type VARCHAR(50) NOT NULL, -- e.g., 'new_reply', 'comment_like'
+        related_comment_id UUID REFERENCES comments(id) ON DELETE CASCADE,
+        related_paper_id UUID REFERENCES papers(id) ON DELETE CASCADE,
+        triggering_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        is_read BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        
+        CONSTRAINT check_related_ids CHECK (
+          (type = 'new_reply' AND related_comment_id IS NOT NULL AND related_paper_id IS NOT NULL AND triggering_user_id IS NOT NULL) OR
+          (type = 'comment_like' AND related_comment_id IS NOT NULL AND related_paper_id IS NOT NULL AND triggering_user_id IS NOT NULL)
+        )
+      )
+    `)
+
+    // Create function and trigger to handle user deletion
+    await query(`
+      CREATE OR REPLACE FUNCTION public.handle_user_delete()
+      RETURNS TRIGGER AS $$
+      BEGIN
+        DELETE FROM public.users WHERE id = old.id;
+        RETURN old;
+      END;
+      $$ LANGUAGE plpgsql SECURITY DEFINER;
+    `)
+
+    await query(`
+      DROP TRIGGER IF EXISTS on_user_deleted ON auth.users;
+      CREATE TRIGGER on_user_deleted
+        AFTER DELETE ON auth.users
+        FOR EACH ROW
+        EXECUTE FUNCTION public.handle_user_delete();
+    `)
+
+    // Create function and trigger to handle new user creation
+    await query(`
+      CREATE OR REPLACE FUNCTION public.handle_new_user()
+      RETURNS TRIGGER AS $$
+      BEGIN
+        INSERT INTO public.users (id, email, name, avatar_url)
+        VALUES (
+          new.id,
+          new.email,
+          new.raw_user_meta_data->>'full_name',
+          new.raw_user_meta_data->>'avatar_url'
+        );
+        RETURN new;
+      END;
+      $$ LANGUAGE plpgsql SECURITY DEFINER;
+    `)
+
+    await query(`
+      DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+      CREATE TRIGGER on_auth_user_created
+        AFTER INSERT ON auth.users
+        FOR EACH ROW
+        EXECUTE FUNCTION public.handle_new_user();
+    `)
+
     console.log("Database initialized successfully")
     return true
   } catch (error) {
@@ -154,6 +244,9 @@ async function initDatabase() {
 }
 
 export async function POST() {
+  // Temporarily disable SSL certificate verification for this operation
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
+
   try {
     await initDatabase()
     return NextResponse.json({ success: true, message: "Database initialized successfully" })
@@ -164,6 +257,8 @@ export async function POST() {
       { status: 500 },
     )
   } finally {
+    // Re-enable SSL certificate verification
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "1"
     // Close the pool
     await pool.end()
   }

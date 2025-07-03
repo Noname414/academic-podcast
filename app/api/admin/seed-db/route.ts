@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { supabaseAdmin } from "@/lib/supabase-admin"
 import { Pool } from "pg"
 
 // Create a PostgreSQL connection pool
@@ -25,78 +26,54 @@ async function query(text: string, params?: any[]) {
 
 async function seedDatabase() {
   try {
-    // Insert sample users
-    await query(`
-      INSERT INTO users (email, name, avatar_url)
-      VALUES 
-        ('user1@example.com', '張三', '/placeholder-avatar.jpg'),
-        ('user2@example.com', '李四', '/placeholder-avatar.jpg'),
-        ('user3@example.com', '王五', '/placeholder-avatar.jpg')
-      ON CONFLICT (email) DO NOTHING
-    `)
+    if (!supabaseAdmin) {
+      throw new Error("Admin client not initialized.")
+    }
+
+    const sampleUsers = [
+      { email: 'user1@example.com', password: 'password123', options: { data: { full_name: '張三', avatar_url: '/placeholder-avatar.jpg' } } },
+      { email: 'user2@example.com', password: 'password123', options: { data: { full_name: '李四', avatar_url: '/placeholder-avatar.jpg' } } },
+      { email: 'user3@example.com', password: 'password123', options: { data: { full_name: '王五', avatar_url: '/placeholder-avatar.jpg' } } },
+    ]
+
+    for (const user of sampleUsers) {
+      const { error: createError } = await supabaseAdmin.auth.admin.createUser(user)
+      if (createError) {
+        // It's okay if the user already exists
+        if (createError.message.includes('User already exists')) {
+          console.log(`User ${user.email} already exists, skipping.`);
+        } else {
+          console.warn(`Could not create user ${user.email}:`, createError.message)
+        }
+      } else {
+        console.log(`User ${user.email} created successfully.`)
+      }
+    }
 
     // Insert sample papers
     await query(`
       INSERT INTO papers (
-        title, 
-        authors, 
-        journal, 
-        publish_date, 
-        summary, 
-        full_text, 
-        audio_url, 
-        duration_seconds, 
-        category, 
-        tags, 
-        views, 
-        likes, 
-        trending
+        title, authors, journal, publish_date, summary, full_text, audio_url, 
+        duration_seconds, category, tags, views, likes, trending
       )
       VALUES 
         (
-          '大型語言模型在醫療診斷中的應用與挑戰', 
-          ARRAY['李明', '王華', '張三'], 
-          'Nature AI', 
-          '2025-05-15', 
+          '大型語言模型在醫療診斷中的應用與挑戰', ARRAY['李明', '王華', '張三'], 'Nature AI', '2025-05-15', 
           '本研究探討了大型語言模型（LLMs）在醫療診斷領域的應用潛力與面臨的挑戰。研究表明，經過特定醫療數據微調的LLMs在某些診斷任務上已接近專科醫生水平，但在複雜病例和稀有疾病識別方面仍存在顯著差距。', 
           '本研究探討了大型語言模型（LLMs）在醫療診斷領域的應用潛力與面臨的挑戰。隨著人工智能技術的快速發展，大型語言模型在各個領域都展現出了驚人的能力。醫療診斷作為一個高度專業化和複雜的領域，對AI技術的應用提出了更高的要求。', 
-          '/sample-podcast.mp3', 
-          1080, 
-          'medical', 
-          ARRAY['醫療AI', '大型語言模型', '診斷', '醫學應用', '可解釋AI'], 
-          2456, 
-          189, 
-          TRUE
+          '/sample-podcast.mp3', 1080, 'medical', ARRAY['醫療AI', '大型語言模型', '診斷', '醫學應用', '可解釋AI'], 2456, 189, TRUE
         ),
         (
-          '多模態學習在自然語言處理中的新進展', 
-          ARRAY['陳明', '林華', '黃偉'], 
-          'ACL Conference', 
-          '2025-04-10', 
+          '多模態學習在自然語言處理中的新進展', ARRAY['陳明', '林華', '黃偉'], 'ACL Conference', '2025-04-10', 
           '本研究提出了一種新的多模態學習框架，能夠同時處理文本、圖像和音頻數據，並在多個基準測試中取得了最先進的結果。', 
           '多模態學習是指AI系統能夠同時處理和理解多種不同類型的數據，如文本、圖像、音頻等。本研究提出了一種新的多模態學習框架，能夠更有效地融合不同模態的信息，並在多個基準測試中取得了最先進的結果。', 
-          '/sample-podcast.mp3', 
-          1320, 
-          'nlp', 
-          ARRAY['多模態學習', '自然語言處理', '深度學習', '表示學習'], 
-          1856, 
-          142, 
-          TRUE
+          '/sample-podcast.mp3', 1320, 'nlp', ARRAY['多模態學習', '自然語言處理', '深度學習', '表示學習'], 1856, 142, TRUE
         ),
         (
-          '自監督學習在電腦視覺中的應用', 
-          ARRAY['張偉', '劉明', '趙華'], 
-          'CVPR', 
-          '2025-03-20', 
+          '自監督學習在電腦視覺中的應用', ARRAY['張偉', '劉明', '趙華'], 'CVPR', '2025-03-20', 
           '本研究探討了自監督學習在電腦視覺任務中的應用，提出了一種新的預訓練方法，能夠在無標籤數據上學習更好的視覺表示。', 
           '自監督學習是一種無需人工標註數據就能學習有用表示的方法。本研究探討了自監督學習在電腦視覺任務中的應用，提出了一種新的預訓練方法，能夠在無標籤數據上學習更好的視覺表示，並在多個下游任務中展現出優異的性能。', 
-          '/sample-podcast.mp3', 
-          960, 
-          'cv', 
-          ARRAY['自監督學習', '電腦視覺', '表示學習', '遷移學習'], 
-          1542, 
-          98, 
-          FALSE
+          '/sample-podcast.mp3', 960, 'cv', ARRAY['自監督學習', '電腦視覺', '表示學習', '遷移學習'], 1542, 98, FALSE
         ),
         (
           '強化學習在機器人控制中的最新進展', 
@@ -128,7 +105,7 @@ async function seedDatabase() {
           65, 
           FALSE
         )
-      ON CONFLICT DO NOTHING
+      ON CONFLICT (title) DO NOTHING
     `)
 
     console.log("Database seeded successfully")
@@ -140,6 +117,9 @@ async function seedDatabase() {
 }
 
 export async function POST() {
+  // Temporarily disable SSL certificate verification for this operation
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
+
   try {
     await seedDatabase()
     return NextResponse.json({ success: true, message: "Database seeded successfully" })
@@ -150,6 +130,8 @@ export async function POST() {
       { status: 500 },
     )
   } finally {
+    // Re-enable SSL certificate verification
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "1"
     // Close the pool
     await pool.end()
   }

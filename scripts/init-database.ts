@@ -144,6 +144,33 @@ export async function initDatabase() {
       $$ LANGUAGE plpgsql;
     `)
 
+    // Create function to toggle paper like status
+    await query(`
+      CREATE OR REPLACE FUNCTION toggle_paper_like(p_paper_id UUID, p_user_id UUID)
+      RETURNS BOOLEAN AS $$
+      DECLARE
+        is_liked BOOLEAN;
+      BEGIN
+        -- Check if the user already liked the paper
+        SELECT EXISTS (
+          SELECT 1 FROM paper_likes WHERE paper_id = p_paper_id AND user_id = p_user_id
+        ) INTO is_liked;
+
+        IF is_liked THEN
+          -- Unlike the paper
+          DELETE FROM paper_likes WHERE paper_id = p_paper_id AND user_id = p_user_id;
+          UPDATE papers SET likes = likes - 1 WHERE id = p_paper_id AND likes > 0;
+          RETURN FALSE;
+        ELSE
+          -- Like the paper
+          INSERT INTO paper_likes (paper_id, user_id) VALUES (p_paper_id, p_user_id);
+          UPDATE papers SET likes = likes + 1 WHERE id = p_paper_id;
+          RETURN TRUE;
+        END IF;
+      END;
+      $$ LANGUAGE plpgsql;
+    `)
+
     console.log("Database initialized successfully")
   } catch (error) {
     console.error("Error initializing database:", error)

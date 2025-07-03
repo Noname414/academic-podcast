@@ -159,6 +159,20 @@ export class DatabaseService {
     }
   }
 
+  async deletePaper(paperId: string) {
+    try {
+      const { error } = await this.supabase.from('papers').delete().eq('id', paperId);
+      if (error) {
+        console.error("Supabase error in deletePaper:", error);
+        throw new Error(`Database error: ${error.message}`);
+      }
+      return { success: true };
+    } catch (error) {
+      console.error("Error in deletePaper:", error);
+      throw error;
+    }
+  }
+
   // 用戶相關操作
   async getUserById(id: string) {
     try {
@@ -191,6 +205,25 @@ export class DatabaseService {
       return data
     } catch (error) {
       console.error("Error in createUser:", error)
+      throw error
+    }
+  }
+
+  async getUsers() {
+    try {
+      const { data, error } = await this.supabase
+        .from("users")
+        .select("*")
+        .order("created_at", { ascending: false })
+
+      if (error) {
+        console.error("Supabase error in getUsers:", error)
+        throw new Error(`Database error: ${error.message}`)
+      }
+
+      return data || []
+    } catch (error) {
+      console.error("Error in getUsers:", error)
       throw error
     }
   }
@@ -379,27 +412,57 @@ export class DatabaseService {
     }
   }
 
+  // 收藏/按讚相關操作
+  async isPaperLikedByUser(paperId: string, userId: string): Promise<boolean> {
+    try {
+      const { data, error } = await this.supabase
+        .from("paper_likes")
+        .select("id")
+        .eq("paper_id", paperId)
+        .eq("user_id", userId)
+        .single()
+      if (error && error.code !== "PGRST116") throw error
+      return !!data
+    } catch (error) {
+      console.error("Error in isPaperLikedByUser:", error)
+      return false
+    }
+  }
+
+  async togglePaperLike(paperId: string, userId: string) {
+    try {
+      const { data, error } = await this.supabase.rpc("toggle_paper_like", {
+        p_paper_id: paperId,
+        p_user_id: userId,
+      })
+      if (error) throw new Error(`Database error: ${error.message}`)
+      return data
+    } catch (error) {
+      console.error("Error in togglePaperLike:", error)
+      throw error
+    }
+  }
+
   // 評論相關操作
   async getComments(paperId: string) {
     try {
       const { data, error } = await this.supabase
         .from("comments")
-        .select(`
+        .select(
+          `
           *,
-          users (
-            name,
-            avatar_url
+          users ( name, avatar_url ),
+          replies:comments (
+            *,
+            users ( name, avatar_url )
           )
-        `)
+        `,
+        )
         .eq("paper_id", paperId)
         .is("parent_id", null)
         .order("created_at", { ascending: false })
 
-      if (error) {
-        console.error("Supabase error in getComments:", error)
-        throw new Error(`Database error: ${error.message}`)
-      }
-
+      if (error) throw new Error(`Database error: ${error.message}`)
       return data || []
     } catch (error) {
       console.error("Error in getComments:", error)
@@ -407,30 +470,64 @@ export class DatabaseService {
     }
   }
 
-  async createComment(comment: Database["public"]["Tables"]["comments"]["Insert"]) {
-    try {
-      const { data, error } = await this.supabase
-        .from("comments")
-        .insert(comment)
-        .select(`
-          *,
-          users (
-            name,
-            avatar_url
-          )
-        `)
-        .single()
-
-      if (error) {
-        console.error("Supabase error in createComment:", error)
-        throw new Error(`Database error: ${error.message}`)
-      }
-
-      return data
-    } catch (error) {
-      console.error("Error in createComment:", error)
-      throw error
+  async getCommentById(commentId: string) {
+    const { data, error } = await this.supabase.from('comments').select('*, user_id').eq('id', commentId).single()
+    if (error) {
+      console.error('Error fetching comment by id', error)
+      return null
     }
+    return data
+  }
+
+  async createComment(comment: Database["public"]["Tables"]["comments"]["Insert"]) {
+    const { data, error } = await this.supabase.from("comments").insert(comment).select(`*, users (name, avatar_url)`).single()
+    if (error) throw new Error(`Database error: ${error.message}`)
+    return data
+  }
+
+  async toggleCommentLike(commentId: string, userId: string) {
+    const { data, error } = await this.supabase.rpc("toggle_comment_like", { p_comment_id: commentId, p_user_id: userId })
+    if (error) throw new Error(`Database error: ${error.message}`)
+    return data
+  }
+
+  async getCommentLikesForUser(commentIds: string[], userId: string): Promise<string[]> {
+    if (commentIds.length === 0) return []
+    const { data, error } = await this.supabase.from("comment_likes").select("comment_id").eq("user_id", userId).in("comment_id", commentIds)
+    if (error) return []
+    return data.map(like => like.comment_id)
+  }
+
+  // 通知相關操作
+  async createNotification(notification: Database["public"]["Tables"]["notifications"]["Insert"]) {
+    const { error } = await this.supabase.from('notifications').insert(notification)
+    if (error) console.error('Error creating notification', error)
+  }
+
+  async getNotifications(userId: string) {
+    const { data, error } = await this.supabase
+      .from("notifications")
+      .select(
+        `
+        id, type, is_read, created_at, related_paper_id, related_comment_id,
+        triggering_user:users!triggering_user_id (name),
+        paper:papers (title)
+      `,
+      )
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(50)
+    if (error) {
+      console.error("Error fetching notifications", error)
+      return []
+    }
+    return data || []
+  }
+
+  async markNotificationsAsRead(notificationIds: string[], userId: string) {
+    const { error } = await this.supabase.from('notifications').update({ is_read: true }).in('id', notificationIds).eq('user_id', userId)
+    if (error) console.error('Error marking notifications as read', error)
+    return { success: !error }
   }
 
   // 播放歷史

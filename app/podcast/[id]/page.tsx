@@ -27,6 +27,7 @@ import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { usePaper, usePapers } from "@/hooks/use-papers"
 import { CommentSection } from "@/components/comment-section"
+import { useAuth } from "@/hooks/use-auth"
 
 interface PodcastDetailProps {
   params: Promise<{
@@ -38,20 +39,67 @@ export default function PodcastDetail({ params }: PodcastDetailProps) {
   const resolvedParams = use(params)
   const [isLiked, setIsLiked] = useState(false)
   const { toast } = useToast()
+  const { user } = useAuth()
 
   // 使用真實的資料庫資料
-  const { paper, loading, error } = usePaper(resolvedParams.id)
+  const { paper, loading, error, setLikeStatus, refetch } = usePaper(resolvedParams.id)
   const { papers: relatedPapers } = usePapers({
     category: paper?.category,
     limit: 3,
   })
 
-  const toggleLike = () => {
-    setIsLiked(!isLiked)
+  const toggleLike = async () => {
+    if (!paper) return
+    if (!user) {
+      toast({
+        title: "需要登入",
+        description: "請先登入才能按讚。",
+        variant: "destructive"
+      })
+      return
+    }
+
+    const originalLikeStatus = paper.is_liked_by_user ?? false
+    const originalLikesCount = paper.likes
+
+    // Optimistic update
+    setLikeStatus(!originalLikeStatus)
+
+    try {
+      const response = await fetch(`/api/papers/${paper.id}/like`, {
+        method: 'POST'
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        if (response.status === 501 && errorData.sql) {
+          toast({
+            title: "資料庫功能尚未建立",
+            description: (
+              <div className="space-y-2">
+                <p>{errorData.message}</p>
+                <p className="font-semibold">請在 Supabase SQL Editor 中執行以下指令碼來修復:</p>
+                <pre className="mt-2 w-full rounded-md bg-slate-950 p-4 text-xs text-white overflow-auto">
+                  <code>{errorData.sql}</code>
+                </pre>
+              </div>
+            ),
+            duration: 20000, // Show for longer
+            variant: "destructive",
+          })
+        } else {
+          throw new Error(errorData.message || "按讚失敗")
+        }
+      }
+    } catch (e) {
+      // Revert on error
+      setLikeStatus(originalLikeStatus)
     toast({
-      title: isLiked ? "已取消收藏" : "已加入收藏",
-      description: isLiked ? "已從收藏列表中移除" : "已添加到您的收藏列表",
+        title: "發生錯誤",
+        description: e instanceof Error ? e.message : "無法完成操作，請稍後再試。",
+        variant: "destructive"
     })
+    }
   }
 
   const handleShare = () => {
@@ -126,7 +174,7 @@ export default function PodcastDetail({ params }: PodcastDetailProps) {
                 {new Date(paper.created_at).toLocaleDateString("zh-TW")}
               </span>
               <span className="flex items-center">
-                <Clock className="mr-2 h-4 w-4" />
+                <Clock className="mr-2 h-4 w-4" /> 
                 {Math.round(paper.duration_seconds / 60)} 分鐘
               </span>
               <span className="flex items-center">
@@ -145,9 +193,9 @@ export default function PodcastDetail({ params }: PodcastDetailProps) {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={toggleLike} className="flex items-center gap-2">
-              <Heart className={`h-4 w-4 ${isLiked ? "fill-red-500 text-red-500" : ""}`} />
-              {paper.likes + (isLiked ? 1 : 0)}
+            <Button variant="outline" onClick={toggleLike} className="flex items-center gap-2" disabled={!paper}>
+              <Heart className={`h-4 w-4 ${paper?.is_liked_by_user ? "fill-red-500 text-red-500" : ""}`} />
+              {paper?.likes ?? 0}
             </Button>
             <Button variant="outline" onClick={handleDownload}>
               <Download className="mr-2 h-4 w-4" />
