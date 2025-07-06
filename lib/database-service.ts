@@ -27,7 +27,11 @@ export class DatabaseService {
       }
 
       if (options?.search) {
-        query = query.or(`title.ilike.%${options.search}%,summary.ilike.%${options.search}%`)
+        // 轉義特殊字符以防止注入攻擊
+        const searchTerm = options.search.replace(/[%_\\]/g, '\\$&').trim()
+        if (searchTerm) {
+          query = query.or(`title.ilike.%${searchTerm}%,summary.ilike.%${searchTerm}%`)
+        }
       }
 
       if (options?.sortBy) {

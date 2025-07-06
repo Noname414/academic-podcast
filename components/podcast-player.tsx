@@ -95,12 +95,24 @@ export function PodcastPlayer({
     const handleLoadStart = () => setIsLoading(true)
     const handleCanPlay = () => setIsLoading(false)
     const handleEnded = () => setIsPlaying(false)
+    
+    const handleError = (e: Event) => {
+      console.error('Audio error:', e)
+      setIsLoading(false)
+      setIsPlaying(false)
+      toast({
+        title: "音頻錯誤",
+        description: "音頻文件載入失敗，請檢查網路連接或稍後再試",
+        variant: "destructive",
+      })
+    }
 
     audio.addEventListener("loadeddata", setAudioData)
     audio.addEventListener("timeupdate", setAudioTime)
     audio.addEventListener("loadstart", handleLoadStart)
     audio.addEventListener("canplay", handleCanPlay)
     audio.addEventListener("ended", handleEnded)
+    audio.addEventListener("error", handleError)
 
     return () => {
       audio.removeEventListener("loadeddata", setAudioData)
@@ -108,6 +120,7 @@ export function PodcastPlayer({
       audio.removeEventListener("loadstart", handleLoadStart)
       audio.removeEventListener("canplay", handleCanPlay)
       audio.removeEventListener("ended", handleEnded)
+      audio.removeEventListener("error", handleError)
     }
   }, [])
 
@@ -267,10 +280,26 @@ export function PodcastPlayer({
 
   const handleDownload = async () => {
     try {
+      // 檢查音頻 URL 是否有效
+      if (!audioUrl || audioUrl === "/sample-podcast.mp3") {
+        toast({
+          title: "下載失敗",
+          description: "音頻文件不可用",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // 嘗試獲取音頻文件以檢查是否可訪問
+      const response = await fetch(audioUrl, { method: 'HEAD' })
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+
       // 創建一個隱藏的下載連結
       const link = document.createElement("a")
       link.href = audioUrl
-      link.download = `${title}.mp3`
+      link.download = `${title.replace(/[^\w\s-]/gi, '')}.mp3`
       link.style.display = "none"
 
       document.body.appendChild(link)
@@ -282,9 +311,12 @@ export function PodcastPlayer({
         description: "音頻文件下載已開始",
       })
     } catch (error) {
+      console.error('Download error:', error)
       toast({
         title: "下載失敗",
-        description: "無法下載音頻文件，請稍後再試",
+        description: error instanceof Error && error.message.includes('CORS') 
+          ? "由於跨域限制，無法直接下載。請右鍵點擊播放器並選擇保存音頻。"
+          : "無法下載音頻文件，請稍後再試",
         variant: "destructive",
       })
     }
@@ -332,6 +364,8 @@ export function PodcastPlayer({
                 className="h-12 w-12 rounded-full border-2 hover:border-primary transition-all duration-200"
                 onClick={togglePlay}
                 disabled={isLoading}
+                aria-label={isLoading ? "載入中" : (isPlaying ? "暫停播放" : "開始播放")}
+                aria-pressed={isPlaying}
               >
                 {isLoading ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
