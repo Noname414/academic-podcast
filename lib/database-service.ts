@@ -30,8 +30,7 @@ export class DatabaseService {
         const searchTerm = options.search.trim()
         if (searchTerm) {
           query = query.or(
-            `title.ilike.%?%,summary.ilike.%?%`,
-            { params: [searchTerm, searchTerm] }
+            `title.ilike.%${searchTerm}%,summary.ilike.%${searchTerm}%`
           )
         }
       }
