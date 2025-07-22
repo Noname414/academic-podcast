@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 const delay = Math.pow(2, retryCount) * 1000
                 console.log(`將在 ${delay}ms 後重試同步用戶數據 (第 ${retryCount + 1} 次重試)`)
                 timeoutRef.current = window.setTimeout(() => {
-                    syncUserToDatabase(user, retryCount + 1);
+                    syncUserToDatabase(user, retryCount + 1)
                 }, delay);
             } else {
                 console.error('用戶數據同步最終失敗，已達到最大重試次數');
