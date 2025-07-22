@@ -27,10 +27,12 @@ export class DatabaseService {
       }
 
       if (options?.search) {
-        // 轉義特殊字符以防止注入攻擊
-        const searchTerm = options.search.replace(/[%_\\]/g, '\\$&').trim()
+        const searchTerm = options.search.trim()
         if (searchTerm) {
-          query = query.or(`title.ilike.%${searchTerm}%,summary.ilike.%${searchTerm}%`)
+          query = query.or(
+            `title.ilike.%?%,summary.ilike.%?%`,
+            { params: [searchTerm, searchTerm] }
+          )
         }
       }
 
