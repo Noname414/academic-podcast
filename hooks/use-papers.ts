@@ -33,16 +33,22 @@ export function usePapers(options: UsePapersOptions = {}) {
       const response = await fetch(`/api/papers?${params}`)
 
       if (!response.ok) {
-        // 依 Content-Type 分流解析
-        const isJson = response.headers.get("content-type")?.toLowerCase().includes("application/json")
-
-        const errorPayload = isJson
-          ? await response.json().catch(() => ({}))
-          : { error: await response.text().catch(() => "") }
-
-        const friendly = errorPayload.message || errorPayload.error || `HTTP ${response.status} ${response.statusText}`
-
-        throw new Error(friendly)
+        // 更好的錯誤處理邏輯
+        let errorMessage = `HTTP ${response.status} ${response.statusText}`
+        try {
+          const contentType = response.headers.get("content-type")
+          if (contentType?.includes("application/json")) {
+            const errorData = await response.json()
+            errorMessage = errorData.message || errorData.error || errorMessage
+          } else {
+            const textError = await response.text()
+            if (textError) errorMessage = textError
+          }
+        } catch (parseError) {
+          console.warn('Failed to parse error response:', parseError)
+          // 使用默認錯誤消息
+        }
+        throw new Error(errorMessage)
       }
 
       const data = await response.json()
@@ -87,11 +93,22 @@ export function usePaper(id: string) {
       const response = await fetch(`/api/papers/${id}?include_like_status=true`)
 
       if (!response.ok) {
-        // 依 Content-Type 分流解析
-        const isJson = response.headers.get("content-type")?.toLowerCase().includes("application/json")
-        const errorPayload = isJson ? await response.json().catch(() => ({})) : { error: await response.text().catch(() => "") }
-        const friendly = errorPayload.message || errorPayload.error || `HTTP ${response.status} ${response.statusText}`
-        throw new Error(friendly)
+        // 更好的錯誤處理邏輯
+        let errorMessage = `HTTP ${response.status} ${response.statusText}`
+        try {
+          const contentType = response.headers.get("content-type")
+          if (contentType?.includes("application/json")) {
+            const errorData = await response.json()
+            errorMessage = errorData.message || errorData.error || errorMessage
+          } else {
+            const textError = await response.text()
+            if (textError) errorMessage = textError
+          }
+        } catch (parseError) {
+          console.warn('Failed to parse error response:', parseError)
+          // 使用默認錯誤消息
+        }
+        throw new Error(errorMessage)
       }
 
       const data = await response.json()

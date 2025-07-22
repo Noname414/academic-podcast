@@ -55,7 +55,13 @@ export default function Home() {
 
   // 處理篩選器變化 - 使用 useCallback 避免無限重新渲染
   const handleFiltersChange = useCallback((newFilters: FilterState) => {
-    setFilters(newFilters)
+    setFilters((prev: FilterState) => {
+      // 只有在實際變化時才更新，避免不必要的重新渲染
+      if (JSON.stringify(prev) !== JSON.stringify(newFilters)) {
+        return newFilters
+      }
+      return prev
+    })
   }, [])
 
   // 獲取最新的論文作為特色播客

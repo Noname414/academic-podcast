@@ -22,7 +22,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null)
     const [loading, setLoading] = useState(true)
 
-    const syncUserToDatabase = useCallback(async (user: User) => {
+    const syncUserToDatabase = useCallback(async (user: User, retryCount = 0) => {
         try {
             const { data: existingUser } = await supabase
                 .from('users')
@@ -31,17 +31,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 .single()
 
             if (!existingUser) {
-                await supabase.from('users').insert({
+                const { error } = await supabase.from('users').insert({
                     id: user.id,
                     email: user.email!,
                     name: user.user_metadata?.full_name || user.email!.split('@')[0],
                     avatar_url: user.user_metadata?.avatar_url
                 })
+                
+                if (error) {
+                    throw error
+                }
             }
         } catch (error) {
             console.error('同步用戶數據失敗:', error)
+            
+            if (retryCount < 3) {
+                // 指數退避重試
+                const delay = Math.pow(2, retryCount) * 1000
+                console.log(`將在 ${delay}ms 後重試同步用戶數據 (第 ${retryCount + 1} 次重試)`)
+                timeoutRef.current = window.setTimeout(() => {
+                    syncUserToDatabase(user, retryCount + 1)
+                }, delay);
+            } else {
+                console.error('用戶數據同步最終失敗，已達到最大重試次數');
+                // 這裡可以添加用戶通知，但要小心不要在每次重試時都通知
+                // toast.error('用戶數據同步失敗，請稍後刷新頁面');
+            }
         }
-    }, [])
+    }, []);
 
     useEffect(() => {
         const getInitialSession = async () => {

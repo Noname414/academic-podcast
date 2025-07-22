@@ -2,8 +2,8 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient, type CookieOptions } from "@supabase/ssr"
 import { db } from "@/lib/database-service"
 
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
-    const commentId = params.id
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+    const { id: commentId } = await params
     let response = NextResponse.next()
 
     try {

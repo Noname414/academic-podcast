@@ -27,7 +27,12 @@ export class DatabaseService {
       }
 
       if (options?.search) {
-        query = query.or(`title.ilike.%${options.search}%,summary.ilike.%${options.search}%`)
+        const searchTerm = options.search.trim()
+        if (searchTerm) {
+          query = query.or(
+            `title.ilike.%${searchTerm}%,summary.ilike.%${searchTerm}%`
+          )
+        }
       }
 
       if (options?.sortBy) {
