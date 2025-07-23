@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useRef, useEffect } from "react"
+import { useState, useMemo, useRef, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -10,6 +10,7 @@ import Link from "next/link"
 import { Play, Pause, Calendar, Clock, Heart, Download, Share2, TrendingUp, Users, Eye } from "lucide-react"
 import { usePapers } from "@/hooks/use-papers"
 import { useToast } from "@/hooks/use-toast"
+import React from "react"
 
 interface FilterState {
   category?: string
@@ -422,3 +423,131 @@ export function PodcastList({ category = "all", searchQuery = "", filters }: Pod
     </div>
   )
 }
+
+// 記憶化播客卡片組件以提升渲染性能
+export const PodcastCard = React.memo(({ 
+  paper, 
+  isLiked, 
+  isPlaying, 
+  onToggleLike, 
+  onPlayToggle,
+  onShare 
+}: {
+  paper: any
+  isLiked: boolean
+  isPlaying: boolean
+  onToggleLike: (id: string) => void
+  onPlayToggle: (paper: any) => void
+  onShare: (paper: any) => void
+}) => {
+  const formatDuration = useCallback((seconds: number) => {
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = seconds % 60
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+  }, [])
+
+  const formatDate = useCallback((dateString: string) => {
+    return new Date(dateString).toLocaleDateString('zh-TW', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
+  }, [])
+
+  return (
+    <Card className="hover:shadow-lg transition-all duration-300 group">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <CardTitle className="text-lg font-semibold line-clamp-2 group-hover:text-primary transition-colors">
+              <Link href={`/podcast/${paper.id}`}>
+                {paper.title}
+              </Link>
+            </CardTitle>
+            <CardDescription className="mt-2 line-clamp-2">
+              {paper.abstract}
+            </CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      
+      <CardContent className="space-y-4">
+        <div className="flex flex-wrap gap-2">
+          {paper.tags.slice(0, 3).map((tag: string, index: number) => (
+            <Badge key={index} variant="secondary" className="text-xs">
+              {tag}
+            </Badge>
+          ))}
+          {paper.tags.length > 3 && (
+            <Badge variant="outline" className="text-xs">
+              +{paper.tags.length - 3}
+            </Badge>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1">
+              <Calendar className="h-4 w-4" />
+              <span>{formatDate(paper.created_at)}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Clock className="h-4 w-4" />
+              <span>{formatDuration(paper.duration_seconds)}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <Eye className="h-4 w-4" />
+              <span>{paper.views || 0}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Users className="h-4 w-4" />
+              <span>{paper.likes || 0}</span>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+
+      <CardFooter className="flex items-center justify-between pt-4 border-t">
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant={isPlaying ? "secondary" : "default"}
+            onClick={() => onPlayToggle(paper)}
+            className="flex items-center gap-2"
+          >
+            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+            {isPlaying ? '暫停' : '播放'}
+          </Button>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onToggleLike(paper.id)}
+            className={`transition-colors ${isLiked ? 'text-red-500 hover:text-red-600' : 'hover:text-red-500'}`}
+          >
+            <Heart className={`h-4 w-4 ${isLiked ? 'fill-current' : ''}`} />
+          </Button>
+          
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onShare(paper)}
+          >
+            <Share2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardFooter>
+    </Card>
+  )
+}, (prevProps, nextProps) => {
+  // 自定義比較函數以優化渲染
+  return (
+    prevProps.paper.id === nextProps.paper.id &&
+    prevProps.isLiked === nextProps.isLiked &&
+    prevProps.isPlaying === nextProps.isPlaying
+  )
+})

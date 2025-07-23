@@ -55,7 +55,18 @@ export default function Home() {
 
   // 處理篩選器變化 - 使用 useCallback 避免無限重新渲染
   const handleFiltersChange = useCallback((newFilters: FilterState) => {
-    setFilters(newFilters)
+    setFilters((prev: FilterState) => {
+      // 淺比較檢查是否有實際變化
+      const isEqual = 
+        prev.category === newFilters.category &&
+        prev.tags.length === newFilters.tags.length &&
+        prev.tags.every((tag, index) => tag === newFilters.tags[index]) &&
+        prev.durationRange[0] === newFilters.durationRange[0] &&
+        prev.durationRange[1] === newFilters.durationRange[1] &&
+        prev.dateRange?.getTime() === newFilters.dateRange?.getTime()
+      
+      return isEqual ? prev : newFilters
+    })
   }, [])
 
   // 獲取最新的論文作為特色播客
