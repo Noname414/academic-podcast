@@ -12,6 +12,8 @@ import { PodcastList } from "@/components/podcast-list"
 import { SearchFilters } from "@/components/search-filters"
 import { StatsSection } from "@/components/stats-section"
 import { NewsletterSignup } from "@/components/newsletter-signup"
+import { PdfUpload } from "@/components/pdf-upload"
+import { PendingUploadsList } from "@/components/pending-uploads-list"
 import { Search, TrendingUp, Clock, Users, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { usePapers } from "@/hooks/use-papers"
@@ -57,14 +59,14 @@ export default function Home() {
   const handleFiltersChange = useCallback((newFilters: FilterState) => {
     setFilters((prev: FilterState) => {
       // 淺比較檢查是否有實際變化
-      const isEqual = 
+      const isEqual =
         prev.category === newFilters.category &&
         prev.tags.length === newFilters.tags.length &&
         prev.tags.every((tag, index) => tag === newFilters.tags[index]) &&
         prev.durationRange[0] === newFilters.durationRange[0] &&
         prev.durationRange[1] === newFilters.durationRange[1] &&
         prev.dateRange?.getTime() === newFilters.dateRange?.getTime()
-      
+
       return isEqual ? prev : newFilters
     })
   }, [])
@@ -260,6 +262,21 @@ export default function Home() {
             </p>
           </div>
           <FeaturedTopics />
+        </section>
+
+        {/* PDF Upload Section */}
+        <section className="mb-16">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold mb-4">上傳論文</h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              上傳您的學術論文PDF，我們將自動生成高品質的播客內容
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <PdfUpload />
+            <PendingUploadsList />
+          </div>
         </section>
 
         {/* Search and Browse */}

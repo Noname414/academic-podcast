@@ -1,4 +1,8 @@
+import { config } from 'dotenv'
 import { Pool } from "pg"
+
+// 加載環境變量
+config({ path: '.env.local' })
 
 // Create a PostgreSQL connection pool
 const pool = new Pool({
@@ -23,6 +27,9 @@ async function query(text: string, params?: any[]) {
 }
 
 export async function initDatabase() {
+  // Temporarily disable SSL certificate verification for this operation
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
+
   try {
     // Create users table if it doesn't exist
     await query(`
@@ -31,9 +38,20 @@ export async function initDatabase() {
         email VARCHAR(255) UNIQUE NOT NULL,
         name VARCHAR(255) NOT NULL,
         avatar_url TEXT,
+        role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('admin', 'user')),
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       )
+    `)
+
+    // Add role column to existing users table if it doesn't exist
+    await query(`
+      DO $$ 
+      BEGIN 
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'role') THEN
+          ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('admin', 'user'));
+        END IF;
+      END $$;
     `)
 
     // Create papers table if it doesn't exist
@@ -176,6 +194,8 @@ export async function initDatabase() {
     console.error("Error initializing database:", error)
     throw error
   } finally {
+    // Re-enable SSL certificate verification
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "1"
     // Close the pool
     await pool.end()
   }

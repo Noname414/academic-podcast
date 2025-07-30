@@ -7,6 +7,7 @@ export interface Database {
           email: string
           name: string
           avatar_url: string | null
+          role: 'admin' | 'user'
           created_at: string
           updated_at: string
         }
@@ -15,6 +16,7 @@ export interface Database {
           email: string
           name: string
           avatar_url?: string | null
+          role?: 'admin' | 'user'
           created_at?: string
           updated_at?: string
         }
@@ -23,6 +25,7 @@ export interface Database {
           email?: string
           name?: string
           avatar_url?: string | null
+          role?: 'admin' | 'user'
           created_at?: string
           updated_at?: string
         }
@@ -267,6 +270,53 @@ export interface Database {
             referencedColumns: ["id"]
           }
         ]
+      }
+      pending_uploads: {
+        Row: {
+          id: string
+          user_id: string
+          original_filename: string
+          file_url: string
+          file_size: number
+          status: 'pending' | 'processing' | 'completed' | 'failed'
+          error_message: string | null
+          extracted_title: string | null
+          extracted_authors: string[] | null
+          extracted_abstract: string | null
+          priority: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          original_filename: string
+          file_url: string
+          file_size: number
+          status?: 'pending' | 'processing' | 'completed' | 'failed'
+          error_message?: string | null
+          extracted_title?: string | null
+          extracted_authors?: string[] | null
+          extracted_abstract?: string | null
+          priority?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          original_filename?: string
+          file_url?: string
+          file_size?: number
+          status?: 'pending' | 'processing' | 'completed' | 'failed'
+          error_message?: string | null
+          extracted_title?: string | null
+          extracted_authors?: string[] | null
+          extracted_abstract?: string | null
+          priority?: number
+          created_at?: string
+          updated_at?: string
+        }
       }
     }
     Views: {

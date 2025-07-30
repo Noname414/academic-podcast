@@ -1,0 +1,9 @@
+# PNPM 配置文件
+# 允許執行 sharp 的建置腳本
+unsafe-perm=true
+
+# 自動批准建置腳本
+auto-install-peers=true
+
+# 改善性能
+store-dir=node_modules/.pnpm

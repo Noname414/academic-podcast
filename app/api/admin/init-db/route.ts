@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import { Pool } from "pg"
+import { withAdminAuth } from "@/lib/admin-auth"
 
 // Create a PostgreSQL connection pool
 const pool = new Pool({
@@ -32,9 +33,20 @@ async function initDatabase() {
         email VARCHAR(255) UNIQUE NOT NULL,
         name VARCHAR(255) NOT NULL,
         avatar_url TEXT,
+        role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('admin', 'user')),
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       )
+    `)
+
+    // Add role column to existing users table if it doesn't exist
+    await query(`
+      DO $$ 
+      BEGIN 
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'role') THEN
+          ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('admin', 'user'));
+        END IF;
+      END $$;
     `)
 
     // Create papers table if it doesn't exist
@@ -133,6 +145,38 @@ async function initDatabase() {
       )
     `)
 
+    // Create pending_uploads table if it doesn't exist
+    await query(`
+      CREATE TABLE IF NOT EXISTS pending_uploads (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        original_filename VARCHAR(255) NOT NULL,
+        file_url TEXT NOT NULL,
+        file_size INTEGER NOT NULL,
+        status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
+        error_message TEXT,
+        extracted_title TEXT,
+        extracted_authors TEXT[],
+        extracted_abstract TEXT,
+        priority INTEGER DEFAULT 5,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `)
+
+    // Create index on pending_uploads for efficient querying
+    await query(`
+      CREATE INDEX IF NOT EXISTS idx_pending_uploads_user_id ON pending_uploads(user_id)
+    `)
+
+    await query(`
+      CREATE INDEX IF NOT EXISTS idx_pending_uploads_status ON pending_uploads(status)
+    `)
+
+    await query(`
+      CREATE INDEX IF NOT EXISTS idx_pending_uploads_priority ON pending_uploads(priority DESC, created_at ASC)
+    `)
+
     // Create function to increment paper views
     await query(`
       CREATE OR REPLACE FUNCTION increment_paper_views(paper_id UUID)
@@ -215,12 +259,13 @@ async function initDatabase() {
       CREATE OR REPLACE FUNCTION public.handle_new_user()
       RETURNS TRIGGER AS $$
       BEGIN
-        INSERT INTO public.users (id, email, name, avatar_url)
+        INSERT INTO public.users (id, email, name, avatar_url, role)
         VALUES (
           new.id,
           new.email,
           new.raw_user_meta_data->>'full_name',
-          new.raw_user_meta_data->>'avatar_url'
+          new.raw_user_meta_data->>'avatar_url',
+          'user'
         );
         RETURN new;
       END;
@@ -243,7 +288,7 @@ async function initDatabase() {
   }
 }
 
-export async function POST() {
+async function postHandler(request: NextRequest) {
   // Temporarily disable SSL certificate verification for this operation
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
 
@@ -263,3 +308,5 @@ export async function POST() {
     await pool.end()
   }
 }
+
+export const POST = withAdminAuth(postHandler)

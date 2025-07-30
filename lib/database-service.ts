@@ -5,6 +5,8 @@ type Paper = Database["public"]["Tables"]["papers"]["Row"]
 type PaperInsert = Database["public"]["Tables"]["papers"]["Insert"]
 type User = Database["public"]["Tables"]["users"]["Row"]
 type Comment = Database["public"]["Tables"]["comments"]["Row"]
+type PendingUpload = Database["public"]["Tables"]["pending_uploads"]["Row"]
+type PendingUploadInsert = Database["public"]["Tables"]["pending_uploads"]["Insert"]
 
 export class DatabaseService {
   private supabase = createServerComponentClient()
@@ -567,6 +569,129 @@ export class DatabaseService {
     } catch (error) {
       console.error("Error in getPlayHistory:", error)
       return null
+    }
+  }
+
+  // 待上傳文件管理
+  async createPendingUpload(upload: PendingUploadInsert) {
+    try {
+      const { data, error } = await this.supabase
+        .from("pending_uploads")
+        .insert(upload)
+        .select()
+        .single()
+
+      if (error) {
+        console.error("Supabase error in createPendingUpload:", error)
+        throw new Error(`Database error: ${error.message}`)
+      }
+
+      return data
+    } catch (error) {
+      console.error("Error in createPendingUpload:", error)
+      throw error
+    }
+  }
+
+  async getPendingUploads(userId: string) {
+    try {
+      const { data, error } = await this.supabase
+        .from("pending_uploads")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+
+      if (error) {
+        console.error("Supabase error in getPendingUploads:", error)
+        throw new Error(`Database error: ${error.message}`)
+      }
+
+      return data || []
+    } catch (error) {
+      console.error("Error in getPendingUploads:", error)
+      throw error
+    }
+  }
+
+  async getAllPendingUploads(options?: {
+    status?: 'pending' | 'processing' | 'completed' | 'failed'
+    limit?: number
+    offset?: number
+  }) {
+    try {
+      let query = this.supabase
+        .from("pending_uploads")
+        .select(`
+          *,
+          users!inner(name, email)
+        `)
+
+      if (options?.status) {
+        query = query.eq("status", options.status)
+      }
+
+      query = query.order("priority", { ascending: false })
+        .order("created_at", { ascending: true })
+
+      if (options?.limit) {
+        query = query.limit(options.limit)
+      }
+
+      if (options?.offset) {
+        query = query.range(options.offset, options.offset + (options.limit || 10) - 1)
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        console.error("Supabase error in getAllPendingUploads:", error)
+        throw new Error(`Database error: ${error.message}`)
+      }
+
+      return data || []
+    } catch (error) {
+      console.error("Error in getAllPendingUploads:", error)
+      throw error
+    }
+  }
+
+  async updatePendingUpload(id: string, updates: Partial<PendingUpload>) {
+    try {
+      const { data, error } = await this.supabase
+        .from("pending_uploads")
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .select()
+        .single()
+
+      if (error) {
+        console.error("Supabase error in updatePendingUpload:", error)
+        throw new Error(`Database error: ${error.message}`)
+      }
+
+      return data
+    } catch (error) {
+      console.error("Error in updatePendingUpload:", error)
+      throw error
+    }
+  }
+
+  async deletePendingUpload(id: string) {
+    try {
+      const { error } = await this.supabase
+        .from("pending_uploads")
+        .delete()
+        .eq("id", id)
+
+      if (error) {
+        console.error("Supabase error in deletePendingUpload:", error)
+        throw new Error(`Database error: ${error.message}`)
+      }
+
+      return { success: true }
+    } catch (error) {
+      console.error("Error in deletePendingUpload:", error)
+      throw error
     }
   }
 }

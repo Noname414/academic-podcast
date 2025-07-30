@@ -39,18 +39,38 @@ export async function middleware(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
 
     // 保護需要身份驗證的路由
-    const protectedPaths = ['/admin', '/profile', '/favorites', '/history', '/settings']
+    const protectedPaths = ['/profile', '/favorites', '/history', '/settings']
+    const adminPaths = ['/admin']
     const currentPath = request.nextUrl.pathname
 
     const isProtectedPath = protectedPaths.some(path =>
         currentPath.startsWith(path)
     )
+    const isAdminPath = adminPaths.some(path =>
+        currentPath.startsWith(path)
+    )
 
-    if (isProtectedPath && !user) {
+    if ((isProtectedPath || isAdminPath) && !user) {
         // 如果訪問受保護路由但未登錄，重定向到主頁
         const redirectUrl = new URL('/', request.url)
         redirectUrl.searchParams.set('auth', 'required')
         return NextResponse.redirect(redirectUrl)
+    }
+
+    // 額外檢查admin路由的管理員權限
+    if (isAdminPath && user) {
+        const { data: userData } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+
+        if (!userData || userData.role !== 'admin') {
+            // 如果不是管理員，重定向到主頁並顯示錯誤
+            const redirectUrl = new URL('/', request.url)
+            redirectUrl.searchParams.set('error', 'admin_required')
+            return NextResponse.redirect(redirectUrl)
+        }
     }
 
     return response
