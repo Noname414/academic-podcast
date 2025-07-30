@@ -31,6 +31,7 @@ import { MoreHorizontal, Trash2, BookX, Eye, ThumbsUp, MessageSquare } from 'luc
 import { toast } from 'sonner'
 import { Skeleton } from '../ui/skeleton'
 import { Badge } from '../ui/badge'
+import { getCategoryDisplayName } from "@/lib/utils"
 
 const fetcher = (url: string) => fetch(url).then(res => res.json())
 
@@ -90,7 +91,7 @@ export function PaperManagementTable() {
                             papers.map((paper: any) => (
                                 <TableRow key={paper.id}>
                                     <TableCell className="font-medium max-w-xs truncate">{paper.title}</TableCell>
-                                    <TableCell><Badge variant="outline">{paper.category}</Badge></TableCell>
+                                    <TableCell><Badge variant="outline">{getCategoryDisplayName(paper.category)}</Badge></TableCell>
                                     <TableCell className="flex items-center gap-4 text-sm text-muted-foreground">
                                         <span className="flex items-center gap-1"><Eye className="h-4 w-4" />{paper.views}</span>
                                         <span className="flex items-center gap-1"><ThumbsUp className="h-4 w-4" />{paper.likes}</span>

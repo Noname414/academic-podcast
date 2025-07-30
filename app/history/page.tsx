@@ -11,6 +11,7 @@ import { Progress } from '@/components/ui/progress'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
 import { History, Play, ArrowLeft, Search, Calendar, Clock, Trash2, CheckCircle } from 'lucide-react'
+import { getCategoryDisplayName } from '@/lib/utils'
 
 interface PlayHistoryItem {
     id: string
@@ -312,7 +313,7 @@ export default function HistoryPage() {
                                                     </h3>
                                                     <div className="flex items-center gap-2 mb-2">
                                                         <Badge variant="secondary">
-                                                            {item.papers.category}
+                                                            {getCategoryDisplayName(item.papers.category)}
                                                         </Badge>
                                                         {item.completed && (
                                                             <Badge variant="default" className="gap-1">

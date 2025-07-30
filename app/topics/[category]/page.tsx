@@ -10,6 +10,7 @@ import { PodcastList } from "@/components/podcast-list"
 import { SearchFilters } from "@/components/search-filters"
 import { ArrowLeft, Play, Clock, Eye, TrendingUp, Headphones } from "lucide-react"
 import Link from "next/link"
+import { getCategoryDisplayName } from "@/lib/utils"
 
 type TopicStats = {
     id: string
@@ -131,9 +132,9 @@ export default function TopicPage() {
             {/* 主題標題和統計 */}
             <div className="space-y-6">
                 <div>
-                    <h1 className="text-4xl font-bold mb-2">{topicStats.name}</h1>
+                    <h1 className="text-4xl font-bold mb-2">{getCategoryDisplayName(topicStats.name)}</h1>
                     <p className="text-lg text-muted-foreground">
-                        探索 {topicStats.name} 領域的最新研究和深度討論
+                        探索 {getCategoryDisplayName(topicStats.name)} 領域的最新研究和深度討論
                     </p>
                 </div>
 
@@ -247,7 +248,7 @@ export default function TopicPage() {
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-2 mb-2">
                                                         <Badge variant="outline" className="text-xs">
-                                                            {paper.category.toUpperCase()}
+                                                            {getCategoryDisplayName(paper.category)}
                                                         </Badge>
                                                         <Badge variant="secondary" className="text-xs flex items-center">
                                                             <TrendingUp className="w-3 h-3 mr-1" />
@@ -322,7 +323,7 @@ export default function TopicPage() {
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex items-center gap-2 mb-2">
                                                             <Badge variant="outline" className="text-xs">
-                                                                {paper.category.toUpperCase()}
+                                                                {getCategoryDisplayName(paper.category)}
                                                             </Badge>
                                                             <Badge variant="secondary" className="text-xs">
                                                                 最新

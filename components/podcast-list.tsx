@@ -11,6 +11,7 @@ import { Play, Pause, Calendar, Clock, Heart, Download, Share2, TrendingUp, User
 import { usePapers } from "@/hooks/use-papers"
 import { useToast } from "@/hooks/use-toast"
 import React from "react"
+import { getCategoryDisplayName } from "@/lib/utils"
 
 interface FilterState {
   category?: string
@@ -318,7 +319,7 @@ export function PodcastList({ category = "all", searchQuery = "", filters }: Pod
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
                         <Badge variant="outline" className="text-xs">
-                          {paper.category.toUpperCase()}
+                          {getCategoryDisplayName(paper.category)}
                         </Badge>
                         {paper.trending && (
                           <Badge variant="secondary" className="text-xs flex items-center">
@@ -425,13 +426,13 @@ export function PodcastList({ category = "all", searchQuery = "", filters }: Pod
 }
 
 // 記憶化播客卡片組件以提升渲染性能
-export const PodcastCard = React.memo(({ 
-  paper, 
-  isLiked, 
-  isPlaying, 
-  onToggleLike, 
+export const PodcastCard = React.memo(({
+  paper,
+  isLiked,
+  isPlaying,
+  onToggleLike,
   onPlayToggle,
-  onShare 
+  onShare
 }: {
   paper: any
   isLiked: boolean
@@ -470,7 +471,7 @@ export const PodcastCard = React.memo(({
           </div>
         </div>
       </CardHeader>
-      
+
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2">
           {paper.tags.slice(0, 3).map((tag: string, index: number) => (
@@ -521,7 +522,7 @@ export const PodcastCard = React.memo(({
             {isPlaying ? '暫停' : '播放'}
           </Button>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <Button
             size="sm"
@@ -531,7 +532,7 @@ export const PodcastCard = React.memo(({
           >
             <Heart className={`h-4 w-4 ${isLiked ? 'fill-current' : ''}`} />
           </Button>
-          
+
           <Button
             size="sm"
             variant="ghost"

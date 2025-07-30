@@ -1,33 +1,37 @@
 "use client"
 
-import { useState, useEffect, use } from "react"
-import { Button } from "@/components/ui/button"
+import { useState, useEffect, useRef, useCallback } from "react"
+import { useParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { PodcastPlayer } from "@/components/podcast-player"
+import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
+import Link from "next/link"
 import {
   ArrowLeft,
-  Calendar,
+  Play,
+  Pause,
+  Volume2,
+  VolumeX,
+  SkipBack,
+  SkipForward,
   Clock,
-  Download,
-  Share2,
-  BookOpen,
-  MessageSquare,
-  Heart,
-  ExternalLink,
-  Users,
   Eye,
-  ThumbsUp,
-  Flag,
+  Heart,
+  Share2,
+  Calendar,
+  Users,
+  BookOpen,
+  Download,
+  MessageSquare
 } from "lucide-react"
-import Link from "next/link"
-import { useToast } from "@/hooks/use-toast"
-import { usePaper, usePapers } from "@/hooks/use-papers"
 import { CommentSection } from "@/components/comment-section"
+import { usePapers } from "@/hooks/use-papers"
 import { useAuth } from "@/hooks/use-auth"
+import { useToast } from "@/hooks/use-toast"
+import { getCategoryDisplayName } from "@/lib/utils"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { PodcastPlayer } from "@/components/podcast-player"
 
 interface PodcastDetailProps {
   params: Promise<{
@@ -94,11 +98,11 @@ export default function PodcastDetail({ params }: PodcastDetailProps) {
     } catch (e) {
       // Revert on error
       setLikeStatus(originalLikeStatus)
-    toast({
+      toast({
         title: "發生錯誤",
         description: e instanceof Error ? e.message : "無法完成操作，請稍後再試。",
         variant: "destructive"
-    })
+      })
     }
   }
 
@@ -158,7 +162,7 @@ export default function PodcastDetail({ params }: PodcastDetailProps) {
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6 mb-8">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-3">
-              <Badge variant="outline">{paper.category.toUpperCase()}</Badge>
+              <Badge variant="outline">{getCategoryDisplayName(paper.category)}</Badge>
               {paper.trending && <Badge>熱門</Badge>}
               <Badge variant="secondary" className="flex items-center">
                 <Eye className="w-3 h-3 mr-1" />
@@ -174,7 +178,7 @@ export default function PodcastDetail({ params }: PodcastDetailProps) {
                 {new Date(paper.created_at).toLocaleDateString("zh-TW")}
               </span>
               <span className="flex items-center">
-                <Clock className="mr-2 h-4 w-4" /> 
+                <Clock className="mr-2 h-4 w-4" />
                 {Math.round(paper.duration_seconds / 60)} 分鐘
               </span>
               <span className="flex items-center">

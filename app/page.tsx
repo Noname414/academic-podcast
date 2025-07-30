@@ -22,6 +22,7 @@ import { AuthDialog } from "@/components/auth-dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, X } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
+import { getCategoryDisplayName } from "@/lib/utils"
 
 interface FilterState {
   category?: string
@@ -321,30 +322,30 @@ export default function Home() {
               >
                 全部
               </TabsTrigger>
-              <TabsTrigger value="nlp">NLP</TabsTrigger>
-              <TabsTrigger value="cv">電腦視覺</TabsTrigger>
-              <TabsTrigger value="rl">強化學習</TabsTrigger>
-              <TabsTrigger value="theory">理論</TabsTrigger>
-              <TabsTrigger value="medical">醫療AI</TabsTrigger>
+              <TabsTrigger value="cs.CV">電腦視覺</TabsTrigger>
+              <TabsTrigger value="cs.CL">自然語言處理</TabsTrigger>
+              <TabsTrigger value="cs.AI">人工智慧</TabsTrigger>
+              <TabsTrigger value="cs.LG">機器學習</TabsTrigger>
+              <TabsTrigger value="cs.RO">機器人學</TabsTrigger>
             </TabsList>
 
             <TabsContent value="all" className="mt-6">
               <PodcastList searchQuery={searchQuery} category="all" filters={filters} />
             </TabsContent>
-            <TabsContent value="nlp" className="mt-6">
-              <PodcastList searchQuery={searchQuery} category="nlp" filters={filters} />
+            <TabsContent value="cs.CV" className="mt-6">
+              <PodcastList searchQuery={searchQuery} category="cs.CV" filters={filters} />
             </TabsContent>
-            <TabsContent value="cv" className="mt-6">
-              <PodcastList searchQuery={searchQuery} category="cv" filters={filters} />
+            <TabsContent value="cs.CL" className="mt-6">
+              <PodcastList searchQuery={searchQuery} category="cs.CL" filters={filters} />
             </TabsContent>
-            <TabsContent value="rl" className="mt-6">
-              <PodcastList searchQuery={searchQuery} category="rl" filters={filters} />
+            <TabsContent value="cs.AI" className="mt-6">
+              <PodcastList searchQuery={searchQuery} category="cs.AI" filters={filters} />
             </TabsContent>
-            <TabsContent value="theory" className="mt-6">
-              <PodcastList searchQuery={searchQuery} category="theory" filters={filters} />
+            <TabsContent value="cs.LG" className="mt-6">
+              <PodcastList searchQuery={searchQuery} category="cs.LG" filters={filters} />
             </TabsContent>
-            <TabsContent value="medical" className="mt-6">
-              <PodcastList searchQuery={searchQuery} category="medical" filters={filters} />
+            <TabsContent value="cs.RO" className="mt-6">
+              <PodcastList searchQuery={searchQuery} category="cs.RO" filters={filters} />
             </TabsContent>
           </Tabs>
         </section>

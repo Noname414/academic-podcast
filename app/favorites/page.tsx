@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
 import { Heart, Play, ArrowLeft, Search, Calendar, Clock, Trash2 } from 'lucide-react'
+import { getCategoryDisplayName } from '@/lib/utils'
 
 interface FavoritePaper {
     id: string
@@ -260,7 +261,7 @@ export default function FavoritesPage() {
                                                     {favorite.papers.title}
                                                 </h3>
                                                 <Badge variant="secondary" className="mb-2">
-                                                    {favorite.papers.category}
+                                                    {getCategoryDisplayName(favorite.papers.category)}
                                                 </Badge>
                                             </div>
 
