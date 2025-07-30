@@ -105,7 +105,7 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between">
+      <div className="w-full px-4 md:px-6 lg:px-8 flex h-16 items-center">
         <div className="flex items-center gap-2 md:gap-4">
           {isMobile && (
             <Sheet>
@@ -174,16 +174,16 @@ export function Header() {
                       {mounted && theme === "dark" ? "淺色模式" : "深色模式"}
                     </Button>
 
-                    {!user && !loading && (
+                    {!user && (
                       <>
                         <AuthDialog>
-                          <Button variant="ghost" className="w-full justify-start gap-3">
-                            登入
+                          <Button variant="ghost" className="w-full justify-start gap-3" disabled={loading}>
+                            {loading ? "載入中..." : "登入"}
                           </Button>
                         </AuthDialog>
                         <AuthDialog>
-                          <Button className="w-full justify-start gap-3">
-                            註冊
+                          <Button className="w-full justify-start gap-3" disabled={loading}>
+                            {loading ? "載入中..." : "註冊"}
                           </Button>
                         </AuthDialog>
                       </>
@@ -237,7 +237,7 @@ export function Header() {
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 ml-auto pr-4">
           {/* Search */}
           {isSearchOpen && !isMobile ? (
             <form onSubmit={handleSearch} className="relative w-64">
@@ -301,16 +301,16 @@ export function Header() {
           {user ? (
             <UserMenu />
           ) : (
-            !isMobile && !loading && (
+            !isMobile && (
               <div className="flex items-center gap-2">
                 <AuthDialog>
-                  <Button variant="ghost" size="sm">
-                    登入
+                  <Button variant="ghost" size="sm" disabled={loading}>
+                    {loading ? "載入中..." : "登入"}
                   </Button>
                 </AuthDialog>
                 <AuthDialog>
-                  <Button size="sm">
-                    註冊
+                  <Button size="sm" disabled={loading}>
+                    {loading ? "載入中..." : "註冊"}
                   </Button>
                 </AuthDialog>
               </div>
