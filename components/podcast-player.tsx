@@ -16,6 +16,8 @@ import {
   ExternalLink,
   Heart,
   Share2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react"
 import { formatTime } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
@@ -25,7 +27,7 @@ interface PodcastPlayerProps {
   id: string
   audioUrl: string
   title: string
-  authors: string
+  authors: string | string[]
   journal?: string
   publishDate?: string
   duration?: number
@@ -55,6 +57,7 @@ export function PodcastPlayer({
   const [playbackRate, setPlaybackRate] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const [isCheckingFavorite, setIsCheckingFavorite] = useState(false)
+  const [isAuthorsExpanded, setIsAuthorsExpanded] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
   const { toast } = useToast()
   const { user } = useAuth()
@@ -301,7 +304,8 @@ export function PodcastPlayer({
         targetUrl = pdfUrl
       } else {
         // 回退到Google Scholar搜索
-        const searchQuery = encodeURIComponent(`${title} ${authors}`)
+        const authorsStr = Array.isArray(authors) ? authors.join(" ") : authors
+        const searchQuery = encodeURIComponent(`${title} ${authorsStr}`)
         targetUrl = `https://scholar.google.com/scholar?q=${searchQuery}`
       }
 
@@ -348,7 +352,43 @@ export function PodcastPlayer({
 
             <div className="min-w-0 flex-1">
               <h3 className="font-semibold text-lg truncate">{title}</h3>
-              <p className="text-sm text-muted-foreground truncate">{authors}</p>
+              <div className="text-sm text-muted-foreground">
+                {(() => {
+                  const authorsArray = Array.isArray(authors) ? authors : authors.split(", ")
+                  const shouldShowExpand = authorsArray.length > 3
+
+                  if (!shouldShowExpand) {
+                    return <p className="truncate">{authorsArray.join(", ")}</p>
+                  }
+
+                  return (
+                    <div>
+                      <p className={isAuthorsExpanded ? "mb-1" : "truncate"}>
+                        {isAuthorsExpanded
+                          ? authorsArray.join(", ")
+                          : authorsArray.slice(0, 3).join(", ")
+                        }
+                      </p>
+                      <button
+                        onClick={() => setIsAuthorsExpanded(!isAuthorsExpanded)}
+                        className="text-primary hover:text-primary/80 text-xs flex items-center gap-1 transition-colors"
+                      >
+                        {isAuthorsExpanded ? (
+                          <>
+                            收起
+                            <ChevronUp className="h-3 w-3" />
+                          </>
+                        ) : (
+                          <>
+                            等 {authorsArray.length} 位作者
+                            <ChevronDown className="h-3 w-3" />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )
+                })()}
+              </div>
               {journal && <p className="text-xs text-muted-foreground">{journal}</p>}
             </div>
           </div>

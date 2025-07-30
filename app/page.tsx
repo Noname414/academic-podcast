@@ -213,7 +213,7 @@ export default function Home() {
                     id={latestPaper.id}
                     audioUrl={latestPaper.audio_url || "/sample-podcast.mp3"}
                     title={latestPaper.title}
-                    authors={latestPaper.authors.join(", ")}
+                    authors={latestPaper.authors}
                     journal={latestPaper.journal ?? undefined}
                     publishDate={latestPaper.publish_date ?? undefined}
                     duration={latestPaper.duration_seconds}

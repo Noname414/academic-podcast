@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, use } from "react"
 import { useParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -23,10 +23,13 @@ import {
   Users,
   BookOpen,
   Download,
-  MessageSquare
+  MessageSquare,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react"
 import { CommentSection } from "@/components/comment-section"
-import { usePapers } from "@/hooks/use-papers"
+import { usePapers, usePaper } from "@/hooks/use-papers"
 import { useAuth } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
 import { getCategoryDisplayName } from "@/lib/utils"
@@ -42,6 +45,8 @@ interface PodcastDetailProps {
 export default function PodcastDetail({ params }: PodcastDetailProps) {
   const resolvedParams = use(params)
   const [isLiked, setIsLiked] = useState(false)
+  const [isAuthorsExpanded, setIsAuthorsExpanded] = useState(false)
+  const [isSummaryAuthorsExpanded, setIsSummaryAuthorsExpanded] = useState(false)
   const { toast } = useToast()
   const { user } = useAuth()
 
@@ -181,10 +186,35 @@ export default function PodcastDetail({ params }: PodcastDetailProps) {
                 <Clock className="mr-2 h-4 w-4" />
                 {Math.round(paper.duration_seconds / 60)} 分鐘
               </span>
-              <span className="flex items-center">
-                <Users className="mr-2 h-4 w-4" />
-                {paper.authors.join(", ")}
-              </span>
+              <div className="flex items-start max-w-full">
+                <Users className="mr-2 h-4 w-4 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <span className={paper.authors.length > 5 && !isAuthorsExpanded ? "truncate block" : "block"}>
+                    {(paper.authors.length > 5 && !isAuthorsExpanded)
+                      ? paper.authors.slice(0, 5).join(", ")
+                      : paper.authors.join(", ")
+                    }
+                  </span>
+                  {paper.authors.length > 5 && (
+                    <button
+                      onClick={() => setIsAuthorsExpanded(!isAuthorsExpanded)}
+                      className="text-primary hover:text-primary/80 text-sm mt-1 flex items-center gap-1 transition-colors"
+                    >
+                      {isAuthorsExpanded ? (
+                        <>
+                          收起
+                          <ChevronUp className="h-3 w-3" />
+                        </>
+                      ) : (
+                        <>
+                          等 {paper.authors.length} 位作者
+                          <ChevronDown className="h-3 w-3" />
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -197,6 +227,28 @@ export default function PodcastDetail({ params }: PodcastDetailProps) {
           </div>
 
           <div className="flex flex-wrap gap-2">
+            {paper.journal && (
+              <Button
+                variant="default"
+                asChild
+                className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg font-semibold"
+              >
+                <a
+                  href={
+                    paper.arxiv_url && paper.arxiv_url !== "https://arxiv.org/search/"
+                      ? paper.arxiv_url
+                      : paper.pdf_url && paper.pdf_url !== "https://arxiv.org/pdf/"
+                        ? paper.pdf_url
+                        : `https://scholar.google.com/scholar?q=${encodeURIComponent(`${paper.title} ${paper.authors.join(" ")}`)}`
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  查看原始論文
+                </a>
+              </Button>
+            )}
             <Button variant="outline" onClick={toggleLike} className="flex items-center gap-2" disabled={!paper}>
               <Heart className={`h-4 w-4 ${paper?.is_liked_by_user ? "fill-red-500 text-red-500" : ""}`} />
               {paper?.likes ?? 0}
@@ -222,7 +274,7 @@ export default function PodcastDetail({ params }: PodcastDetailProps) {
                 id={paper.id}
                 audioUrl={paper.audio_url || "/sample-podcast.mp3"}
                 title={paper.title}
-                authors={paper.authors.join(", ")}
+                authors={paper.authors}
                 journal={paper.journal || undefined}
                 publishDate={paper.publish_date || undefined}
                 duration={paper.duration_seconds}
@@ -243,35 +295,40 @@ export default function PodcastDetail({ params }: PodcastDetailProps) {
             <TabsContent value="summary" className="mt-6">
               <Card>
                 <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center">
-                      <BookOpen className="mr-2 h-5 w-5" />
-                      論文摘要
-                    </CardTitle>
-                    {paper.journal && (
-                      <Button variant="outline" size="sm" asChild>
-                        <a
-                          href={
-                            paper.arxiv_url && paper.arxiv_url !== "https://arxiv.org/search/"
-                              ? paper.arxiv_url
-                              : paper.pdf_url && paper.pdf_url !== "https://arxiv.org/pdf/"
-                                ? paper.pdf_url
-                                : `https://scholar.google.com/scholar?q=${encodeURIComponent(`${paper.title} ${paper.authors.join(" ")}`)}`
-                          }
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <ExternalLink className="mr-2 h-4 w-4" />
-                          查看原始論文
-                        </a>
-                      </Button>
-                    )}
-                  </div>
+                  <CardTitle className="flex items-center">
+                    <BookOpen className="mr-2 h-5 w-5" />
+                    論文摘要
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div>
                     <h3 className="font-semibold mb-2">作者</h3>
-                    <p className="text-muted-foreground">{paper.authors.join(", ")}</p>
+                    <div className="text-muted-foreground leading-relaxed">
+                      <p className="mb-2">
+                        {(paper.authors.length > 8 && !isSummaryAuthorsExpanded)
+                          ? paper.authors.slice(0, 8).join(", ")
+                          : paper.authors.join(", ")
+                        }
+                      </p>
+                      {paper.authors.length > 8 && (
+                        <button
+                          onClick={() => setIsSummaryAuthorsExpanded(!isSummaryAuthorsExpanded)}
+                          className="text-primary hover:text-primary/80 text-sm flex items-center gap-1 transition-colors"
+                        >
+                          {isSummaryAuthorsExpanded ? (
+                            <>
+                              收起作者列表
+                              <ChevronUp className="h-3 w-3" />
+                            </>
+                          ) : (
+                            <>
+                              顯示全部 {paper.authors.length} 位作者
+                              <ChevronDown className="h-3 w-3" />
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {paper.journal && (
